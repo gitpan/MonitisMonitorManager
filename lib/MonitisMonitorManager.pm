@@ -1,21 +1,22 @@
 package MonitisMonitorManager;
 
 use 5.008008;
+require XML::Simple;
+require Data::Dumper;
+require Monitis;
+require URI::Escape;
+require Thread;
+use Thread qw(async);
+
 use strict;
 # don't use strict "refs" as we are going to call templated functions
 # that depend on variable names
 no strict "refs";
 use warnings;
-use XML::Simple;
-use Data::Dumper;
-use Monitis;
-use Carp;
-use File::Basename;
-use URI::Escape;
-use Thread qw(async);
-use Date::Manip;
 use threads::shared;
 use MonitisMonitorManager::MonitisConnection;
+use Carp;
+use Date::Manip;
 use File::Basename;
 
 require Exporter;
@@ -39,7 +40,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '3.1';
+our $VERSION = '3.2';
 
 # use the same constant as in the Perl-SDK
 use constant DEBUG => $ENV{MONITIS_DEBUG} || 0;
@@ -125,7 +126,7 @@ sub load_plugins_in_directory($$$) {
 	my $full_plugin_directory = $m3_perl_module_directory . "/" . $plugin_directory;
 	# iterate on all plugins in directory and load them
 	foreach my $plugin_file (<$full_plugin_directory/*.pm>) {
-		my $plugin_name = $plugin_directory . "::" . basename($plugin_file);
+		my $plugin_name = "MonitisMonitorManager::" . $plugin_directory . "::" . basename($plugin_file);
 		$plugin_name =~ s/\.pm$//g;
 		# load the plugin
 		eval {
@@ -136,7 +137,7 @@ sub load_plugins_in_directory($$$) {
 			croak "error: $@";
 		} else {
 			carp "Loading plugin '" . $plugin_name . "'->'" . $plugin_name->name() . "'" if DEBUG;
-			$self->{$plugin_table_name}{$plugin_name->name()} = $plugin_name;
+			$self->{$plugin_table_name}{$plugin_name->name()} = "$plugin_name";
 		}
 	}
 }
@@ -608,9 +609,11 @@ This Perl module helps you manage Custom Monitors on Monitis (www.monitis.com).
 
   # configuration_xml is a file with the configuration XML, refer to some
   # examples here: https://github.com/monitisexchange/Monitis-Linux-Scripts/tree/master/M3v3/monitis-m3/usr/local/share/monitis-m3/sample_config
+  my $configuration_xml = "/etc/m3.d/config.xml";
 
   # test_config dictates whether to just test the configuration or actually
   # do a proper run
+  my $test_config = 0;
 
   # initialize the M3 instance
   my $M3 = MonitisMonitorManager->new(
