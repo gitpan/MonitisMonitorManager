@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               MonitisMonitorManager
-version:            3.6
+version:            3.7
 abstract:           Monitis Monitor Manager (M3)
 author:
     - Dan Fruehauf <malkodan@gmail.com>
