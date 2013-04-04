@@ -22,7 +22,7 @@ DESC="Monitis M3"
 NAME=m3
 EXEC_NAME=monitis-m3
 DAEMON=/usr/bin/$EXEC_NAME
-DAEMON_ARGS="/etc/m3.d/config.xml"
+DAEMON_ARGS="--syslog /etc/m3.d/config.xml"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -51,12 +51,6 @@ do_start()
 	#   2 if daemon could not be started
 
 	export M3_CONFIG_DIR
-	# check if M3_LOG_FILE is defined
-	if [ x"$M3_LOG_FILE" = x ]; then
-		echo -n " M3_LOG_FILE undefined in /etc/default/m3"
-		return 1
-	fi
-
 	# check if M3_CONFIG_XML is defined
 	if [ x"$M3_CONFIG_XML" = x ]; then
 		echo -n " M3_CONFIG_XML undefined in /etc/default/m3"

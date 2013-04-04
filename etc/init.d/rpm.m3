@@ -37,13 +37,6 @@ start()
 	echo -n "Starting m3:"
 	export M3_CONFIG_DIR
 	if ! status >& /dev/null; then
-		# check if M3_LOG_FILE is defined
-		if [ x"$M3_LOG_FILE" = x ]; then
-			echo -n " M3_LOG_FILE undefined in /etc/sysconfig/m3"
-			failure; echo
-			return 1
-		fi
-
 		# check if M3_CONFIG_XML is defined
 		if [ x"$M3_CONFIG_XML" = x ]; then
 			echo -n " M3_CONFIG_XML undefined in /etc/sysconfig/m3"
@@ -51,7 +44,7 @@ start()
 			return 1
 		fi
 
-		$m3 $M3_CONFIG_XML >> $M3_LOG_FILE 2>&1 &
+		$m3 --syslog $M3_CONFIG_XML &
 		success; echo
 	else
 		echo -n " already running!"
@@ -62,13 +55,22 @@ start()
 # stop m3 instances
 stop() {
 	echo -n "Stopping m3:"
-	for i in `seq 1 10`; do
+	local signal=SIGINT
+	local -i i
+	for i in `seq 1 15`; do
 		local m3_pids=`pidofm3`
 		if [ x"$m3_pids" != x ]; then
-			kill -SIGINT $m3_pids
+			kill -$signal $m3_pids
 		else
 			success; echo
 			return 0
+		fi
+		# escalate signal from SIGINT to SIGTERM to SIGKILL
+		if [ $i -eq 5 ]; then
+			signal=SIGTERM
+		fi
+		if [ $i -eq 10 ]; then
+			signal=SIGKILL
 		fi
 		sleep 1
 	done

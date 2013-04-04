@@ -1,7 +1,6 @@
 package MonitisMonitorManager::Execution::DBI;
 use strict;
 use MonitisMonitorManager::M3PluginCommon;
-use Carp;
 require Time::HiRes;
 use Time::HiRes qw(clock_gettime);
 require DBI;
@@ -41,6 +40,8 @@ sub get_config {
 		MonitisMonitorManager::M3PluginCommon::get_optional_parameter($self, $plugin_xml_base, "password");
 	${$plugin_parameters}{statistics} =
 		MonitisMonitorManager::M3PluginCommon::get_optional_parameter($self, $plugin_xml_base, "statistics");
+	${$plugin_parameters}{delimiter} =
+		MonitisMonitorManager::M3PluginCommon::get_optional_parameter($self, $plugin_xml_base, "delimiter", " ");
 }
 
 # execute a DBI (SQL) query and return the last row fetched
@@ -58,6 +59,7 @@ sub execute {
 	my $username = $plugin_parameters{username};
 	my $password = $plugin_parameters{password};
 	my $statistics = $plugin_parameters{statistics};
+	my $delimiter = $plugin_parameters{delimiter};
 
 	# hostname
 	if (!defined($hostname)) {
@@ -76,20 +78,20 @@ sub execute {
 	if ($hostname ne "") {
 		$dsn .= ":$hostname";
 	}
-	carp "DB: '$username\@$dsn', Query: '$query'\n";
+	MonitisMonitorManager::M3PluginCommon::log_message("debug", "DB: '$username\@$dsn', Query: '$query'");
 
 	# connect to DB and run the query
 	my $dbh;
 	if ($use_password == 1) {
 		$dbh = DBI->connect("$dsn", "$username", "$password")
-			|| carp "Could not connect to database '$username\@$dsn': $DBI::errstr" && return "";
+			|| MonitisMonitorManager::M3PluginCommon::log_message("err", "Could not connect to database '$username\@$dsn': $DBI::errstr") && return "";
 	} else {
 		$dbh = DBI->connect("$dsn", "$username")
-			|| carp "Could not connect to database '$username\@$dsn': $DBI::errstr" && return "";
+			|| MonitisMonitorManager::M3PluginCommon::log_message("err", "Could not connect to database '$username\@$dsn': $DBI::errstr") && return "";
 	}
 
 	my $sth = $dbh->prepare($query)
-		|| carp "Could not prepare query '$query': $DBI::errstr" && return "";
+		|| MonitisMonitorManager::M3PluginCommon::log_message("err", "Could not prepare query '$query': $DBI::errstr") && return "";
 
 	# measure time
 	my $time_begin = clock_gettime();
@@ -98,7 +100,7 @@ sub execute {
 
 	# execute query and fetch result
 	if (!$sth->execute()) {
-		carp "Could not execute statement '$query': $DBI::errstr";
+		MonitisMonitorManager::M3PluginCommon::log_message("err", "Could not execute statement '$query': $DBI::errstr");
 		$success_code = 0;
 	}
 
@@ -116,12 +118,12 @@ sub execute {
 	my $number_of_rows = 0;
 	my $output;
 	while (my @data = $sth->fetchrow_array()) {
-		$output = $data[0];
+		$output = join($delimiter, @data);
 		$number_of_rows++;
 	}
 
 	if ($number_of_rows > 1) {
-		carp "Number of rows fetched in query is more than 1, you might want to fix the query.\n";
+		MonitisMonitorManager::M3PluginCommon::log_message("info", "Number of rows fetched in query is more than 1, you might want to fix the query.");
 	}
 
 	# disconnect!

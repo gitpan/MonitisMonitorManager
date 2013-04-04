@@ -1,11 +1,5 @@
 #!/usr/bin/perl -w
 
-eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
-    if 0; # not running under some shell
-
-eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
-    if 0; # not running under some shell
-
 use strict;
 use Getopt::Long;
 use MonitisMonitorManager;
@@ -41,6 +35,12 @@ sub usage() {
 	exit;
 }
 
+# prints version
+sub version() {
+	print "M3v3 version $MonitisMonitorManager::VERSION\n";
+	exit;
+}
+
 # return a skeleton XML with just the API and secret keys
 sub get_basic_xml() {
 	my ($fh, $filename) = tempfile();
@@ -61,18 +61,27 @@ sub main() {
 	my $mass_load = 0;
 	my $help = 0;
 	my $test_config = 0;
+	my $syslog = 0;
 	my $raw = "";
+	my $version = 0;
 	GetOptions(
 		"d|dry-run" => \$dry_run,
 		"o|once" => \$once,
 		"m|mass-load" => \$mass_load,
 		"r|raw=s" => \$raw,
+		"s|syslog" => \$syslog,
 		"t|test-config" => \$test_config,
-		"h|help" => \$help);
+		"h|help" => \$help,
+		"v|version" => \$version);
 
 	# display help
 	if ($help) {
 		usage();
+	}
+
+	# display version
+	if ($version) {
+		version();
 	}
 
 	# get the configuration XML
@@ -93,7 +102,8 @@ sub main() {
 		configuration_xml => $xmlfile,
 		dry_run => $dry_run,
 		mass_load => $mass_load,
-		test_config => $test_config);
+		test_config => $test_config,
+		syslog => $syslog);
 
 	# invoke all the agents
 	if ($raw ne "") {
